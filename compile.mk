@@ -21,7 +21,7 @@ DSPINC       = $(BUILDROOT)/Libraries/CMSIS/DSP/Include
 DSPLIB       = $(BUILDROOT)/Libraries/CMSIS/DSP/Source
 
 # Tool path
-# TOOLROOT ?= Tools/gcc-arm-none-eabi-9-2020-q2-update/bin/
+TOOLROOT = Tools/gcc-arm-none-eabi-12-2-1/bin/
 
 # Tools
 CC=$(TOOLROOT)arm-none-eabi-gcc
