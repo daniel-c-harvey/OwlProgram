@@ -1,0 +1,14 @@
+{
+    "files.associations": {
+        "*.jsfx": "Jesusonic",
+        ".env*": "dotenv",
+        "*.tpp": "cpp",
+        "cmath": "cpp",
+        "complex": "cpp",
+        "valarray": "cpp",
+        "iosfwd": "cpp",
+        "xlocbuf": "cpp",
+        "locale": "cpp",
+        "string": "cpp"
+    }
+}

@@ -35,3 +35,11 @@ Source/progname.s
 
 #Unignore this - because .lib extension is ignored for libraries
 !FaustCode/owl.lib
+
+# Tools
+FirmwareSender/
+Tools/FirmwareSender
+Tools/Python-2.7.13/
+Tools/emsdk/
+Tools/gcc-arm-none-eabi-12-2-1
+
