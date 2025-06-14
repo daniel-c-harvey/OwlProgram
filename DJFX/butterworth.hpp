@@ -112,6 +112,12 @@ class ButterworthHP : public Butterworth<k_channels, TUIParams>
         ButterworthHP(const uint32_t& sample_rate, ButterworthParameters *params);
 
         NormalCoefficients prepare_coefficients() override;
+        
+    protected:
+        void process_channel_frame(FeedbackLine& state, 
+                                   const NormalCoefficients& coeff, 
+                                   const float& x, 
+                                   float& y) override;
 };
 
 template <int k_channels, typename TUIParams>
@@ -177,7 +183,6 @@ class FreqCompensated : public Compensated<k_channels, TUIParams, TFilterParams>
 struct SaturatedParameters : public ButterworthParameters
 {
     float drive;
-    float fb_amount;
 };
 
 template <int k_channels, typename TUIParams, typename TBaseFilterParams = ButterworthParameters>

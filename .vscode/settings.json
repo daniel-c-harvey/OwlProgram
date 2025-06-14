@@ -22,6 +22,7 @@
         "xlocale": "cpp",
         "xstring": "cpp",
         "future": "cpp",
-        "*.def": "cpp"
+        "*.def": "cpp",
+        "*.mm": "cpp"
     }
 }

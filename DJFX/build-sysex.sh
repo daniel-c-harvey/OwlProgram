@@ -14,7 +14,7 @@ mkdir -p ../PatchSource/
 
 # Copy all files and subdirectories to ../PatchSource/ only if newer or missing
 echo "Copying updated files from $DIR_NAME to ../PatchSource/ directory..."
-cp -rfu * ../PatchSource/ 2>/dev/null || true
+cp -rf * ../PatchSource/ 2>/dev/null || true
 
 # Run make command
 cd ..

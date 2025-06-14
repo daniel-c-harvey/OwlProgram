@@ -2,18 +2,26 @@
 #pragma once
 #include "basicmaths.h"
 
-// TB-303 style tanh approximation for feedback saturation
-static inline float tb303_tanh(float x)
+static inline float tanh_saturate(float x, float min_val, float max_val, float a,float b)
 {
-    if (x > 3.f) return 1.f;
-    if (x < -3.f) return -1.f;
+    if (x > max_val) return 1.f;
+    if (x < min_val) return -1.f;
     const float x2 = x * x;
-    return x * (27.f + x2) / (27.f + 9.f * x2);
+    return x * (a + x2) / (a + b + x2);
 }
 
-#ifndef param_val_to_f32 
-#define param_val_to_f32(val) ((uint16_t)val * 9.77517106549365e-004f)
-#endif
+// TB-303 style feedback saturation
+// Hard saturation for filter feedback (handles large values)
+static inline float feedback_saturate(float x)
+{
+    return tanh_saturate(x, -3.f, 3.f, 27.f, 9.f);
+}
+
+// Gentle saturation for audio signals (subtle, musical)
+static inline float audio_saturate(float x)
+{
+    return tanh_saturate(x, -1.5f, 1.5f, 12.f, 3.f);
+}
 
 /// @brief Tunable logistic function (sigmoid)
 /// @param a slope

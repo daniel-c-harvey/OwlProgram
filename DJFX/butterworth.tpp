@@ -64,11 +64,11 @@ template <int k_channels, typename TUIParams>
 void Butterworth<k_channels, TUIParams>::prepare_parameters(const TUIParams& params)
 {
     // Direct logarithmic interpolation for smooth frequency scaling using standard math
-    const float min_freq = 20.f;
-    const float max_freq = 20000.f;
+    const float min_freq = 10.f;
+    const float max_freq = 23000.f;  // Closer to Nyquist for "open" filter
     float log_freq = logf(min_freq) + params.p_cutoff * (logf(max_freq) - logf(min_freq));
     float raw_cutoff = expf(log_freq);
-    this->params->cutoff = fminf(raw_cutoff, 0.45f * this->sample_rate);
+    this->params->cutoff = fminf(raw_cutoff, 0.48f * this->sample_rate);  // Allow closer to Nyquist
 
     // Resonance response
     this->params->res = params.p_resonance;
@@ -94,16 +94,11 @@ void Butterworth<k_channels, TUIParams>::process_channel_frame(FeedbackLine& sta
                                                                const float& x, 
                                                                float& y)
 {
-    // CRITICAL: Highpass filters require input feedback to work properly
-    // This compensates for coefficient collapse at low frequencies
-    const float fb_amount = 1e-5f;
-    float x_prime = x - fb_amount * state.fb;
-
-    this->filter(state, coeff, x_prime, y);
+    this->filter(state, coeff, x, y);
     
     // Update feedback state
     state.x[1] = state.x[0];
-    state.x[0] = x_prime;
+    state.x[0] = x;
     state.y[1] = state.y[0];
     state.y[0] = y;
     state.fb = y;
@@ -122,28 +117,43 @@ ButterworthHP<k_channels, TUIParams>::ButterworthHP(const uint32_t& p_sample_rat
 : Butterworth<k_channels, TUIParams>(p_sample_rate, p_params) {}
 
 template <int k_channels, typename TUIParams>
+void ButterworthHP<k_channels, TUIParams>::process_channel_frame(FeedbackLine& state,
+                                                                 const NormalCoefficients& coeff,
+                                                                 const float& x, 
+                                                                 float& y)
+{
+    // CRITICAL: Highpass filters require input feedback to work properly
+    // This compensates for coefficient collapse at low frequencies
+    const float fb_amount = this->params->res * 0.24f;
+    float input = x - fb_amount * feedback_saturate(state.fb * 0.9f);
+    
+    Butterworth<k_channels, TUIParams>::process_channel_frame(state, coeff, input, y);
+}
+
+template <int k_channels, typename TUIParams>
 NormalCoefficients ButterworthHP<k_channels, TUIParams>::prepare_coefficients()
 {
-    const float w = M_PI * 2 * this->params->cutoff / this->sample_rate;
-    const float cosw = cosf(w);
-    const float sinw = sinf(w);
+    // Professional state variable filter approach with proper frequency scaling
+    const float nyquist = this->sample_rate * 0.5f;
+    const float freq = fminf(this->params->cutoff, nyquist * 0.99f);
     
-    const float min_alpha = 0.0001f;
-    const float alpha = fmaxf(sinw / (2 * this->params->Q), min_alpha);
+    // Frequency warping compensation for accurate response
+    const float wc = freq / nyquist;
+    const float g = tanf(M_PI * wc * 0.5f);
     
-    const float a0 = 1.f + alpha;
-    const float a1 = -2.f * cosw;
-    const float a2 = 1.f - alpha;
-    const float b0 = (1.f + cosw) / 2.f;  // This will collapse, but input feedback should compensate
-    const float b1 = -(1.f + cosw);
-    const float b2 = (1.f + cosw) / 2.f;
-
+    // Damping factor from Q with proper scaling
+    const float k = 1.0f / this->params->Q;
+    
+    // State variable filter coefficients - corrected formulas (highpass)
+    const float denom = 1.0f + g * (g + k);
+    const float norm = 1.0f / denom;
+    
     NormalCoefficients coeff = {
-        .a1 = a1 / a0,
-        .a2 = a2 / a0,
-        .b0 = b0 / a0,
-        .b1 = b1 / a0,
-        .b2 = b2 / a0
+        .a1 = 2.0f * (g * g - 1.0f) * norm,
+        .a2 = (1.0f - g * k + g * g) * norm,
+        .b0 = norm,
+        .b1 = -2.0f * norm,
+        .b2 = norm
     };
 
     return coeff;
@@ -156,29 +166,27 @@ ButterworthLP<k_channels, TUIParams>::ButterworthLP(const uint32_t& p_sample_rat
 template <int k_channels, typename TUIParams>
 NormalCoefficients ButterworthLP<k_channels, TUIParams>::prepare_coefficients()
 {
-    // Standard digital biquad lowpass coefficients
-    const float w = M_PI * 2 * this->params->cutoff / this->sample_rate;
-    const float cosw = cosf(w);
-    const float sinw = sinf(w);
+    // Pre-warped bilinear transform - correct implementation
+    const float w = tanf(M_PI * this->params->cutoff / this->sample_rate);
+    const float w2 = w * w;
+    const float cosw = (1.0f - w2) / (1.0f + w2);
+    const float sinw = 2.0f * w / (1.0f + w2);
+    const float alpha = sinw / (2.0f * this->params->Q);
     
-    // Ensure minimum alpha to prevent numerical instability while preserving resonance
-    const float min_alpha = 0.0001f;
-    const float alpha = fmaxf(sinw / (2 * this->params->Q), min_alpha);
+    // Standard RBJ lowpass with pre-warped frequency
+    const float norm = 1.0f / (1.0f + alpha);
+    const float b0 = (1.0f - cosw) * 0.5f * norm;
+    const float b1 = (1.0f - cosw) * norm;
+    const float b2 = (1.0f - cosw) * 0.5f * norm;
+    const float a1 = -2.0f * cosw * norm;
+    const float a2 = (1.0f - alpha) * norm;
     
-    // Standard biquad lowpass coefficients with resonance
-    const float a0 = 1.f + alpha;
-    const float a1 = -2.f * cosw;
-    const float a2 = 1.f - alpha;
-    const float b0 = (1.f - cosw) / 2.f;
-    const float b1 = 1.f - cosw;
-    const float b2 = (1.f - cosw) / 2.f;
-
     NormalCoefficients coeff = {
-        .a1 = a1 / a0,
-        .a2 = a2 / a0,
-        .b0 = b0 / a0,
-        .b1 = b1 / a0,
-        .b2 = b2 / a0
+        .a1 = a1,
+        .a2 = a2,
+        .b0 = b0,
+        .b1 = b1,
+        .b2 = b2
     };
 
     return coeff;
@@ -214,7 +222,7 @@ void FreqCompensated<k_channels, TUIParams, TFilterParams>::prepare_parameters(c
     this->params->fb_amount = params.p_cutoff * 0.24f;
     
     // Volume compensation increases with resonance
-    this->params->vol_comp = 1.f;// + (this->params->fb_amount);
+    this->params->vol_comp = 1.f + (this->params->fb_amount);
 }    
 
 template <int k_channels, typename TUIParams, typename TFilterParams>
@@ -222,20 +230,15 @@ void Saturated<k_channels, TUIParams, TFilterParams>::prepare_parameters(const T
 {
     FilterDecorator<k_channels, FeedbackLine, NormalCoefficients, TUIParams, TFilterParams, SaturatedParameters>::prepare_parameters(params);
 
-   // drive based on resonance
-    this->params->drive = 1.f + this->params->res * 10.f;
-    
-    // Initialize feedback amount based on resonance
-    this->params->fb_amount = params.p_resonance * 0.24f;
+   // Subtle drive based on resonance - much gentler
+    this->params->drive = 1.f + this->params->res * 0.3f * powf(params.p_cutoff, 2.f);
 }
 
 template <int k_channels, typename TUIParams, typename TFilterParams>
 void Saturated<k_channels, TUIParams, TFilterParams>::process_channel_frame(FeedbackLine &state, const NormalCoefficients &coeff, const float &x, float &y)
-{
-    float input = x - this->params->fb_amount * tb303_tanh(state.fb * 0.9f);
-    
-    FilterDecorator<k_channels, FeedbackLine, NormalCoefficients, TUIParams, TFilterParams, SaturatedParameters>::process_channel_frame(state, coeff, input, y);
+{    
+    FilterDecorator<k_channels, FeedbackLine, NormalCoefficients, TUIParams, TFilterParams, SaturatedParameters>::process_channel_frame(state, coeff, x, y);
 
-    // Apply saturation with drive that increases less with resonance
-    y = tb303_tanh(y * this->params->drive) * (1.f / this->params->drive);
+    // Apply gentle saturation for musical character
+    y = audio_saturate(y * this->params->drive) * (1.f / this->params->drive);
 }

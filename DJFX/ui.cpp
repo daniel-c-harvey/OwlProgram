@@ -50,12 +50,13 @@ static inline float H_HP_reso(float x)
 
 static inline float H_LP_cutoff(float p_value)
 {
-    return (1.f - (powf(p_value, 1.35f))) * 0.35f + 0.65f;
+    return powf(p_value, 1.35f) * 0.35f + 0.65f;
 }
 
-static inline float H_LP_reso(float x)
+static inline float H_LP_reso(float p_value)
 {
-    return powf((1.f - cosf(M_PI * 2.f * (1.f - x))) / 2.f, 2.f) * 0.22f;
+    float cos_val = (1.f - cosf(M_PI * 2.f * p_value)) / 2.f;
+    return (cos_val * cos_val) * 0.62f;
 }
 
 void UserParameters::setHP(float p_value)
@@ -66,8 +67,9 @@ void UserParameters::setHP(float p_value)
 
 void UserParameters::setLP(float p_value)
 {
-    lp_params.p_cutoff = H_LP_cutoff(p_value);
-    lp_params.p_resonance = H_LP_reso(p_value);
+    float p_value_reversed = 1.f - p_value;
+    lp_params.p_cutoff = H_LP_cutoff(p_value_reversed);
+    lp_params.p_resonance = H_LP_reso(p_value_reversed);
 }
 
 FilterParameters UserParameters::getHPParams()
