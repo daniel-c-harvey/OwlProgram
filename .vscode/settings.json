@@ -9,6 +9,19 @@
         "iosfwd": "cpp",
         "xlocbuf": "cpp",
         "locale": "cpp",
-        "string": "cpp"
+        "string": "cpp",
+        "charconv": "cpp",
+        "chrono": "cpp",
+        "execution": "cpp",
+        "format": "cpp",
+        "list": "cpp",
+        "random": "cpp",
+        "regex": "cpp",
+        "variant": "cpp",
+        "xhash": "cpp",
+        "xlocale": "cpp",
+        "xstring": "cpp",
+        "future": "cpp",
+        "*.def": "cpp"
     }
 }

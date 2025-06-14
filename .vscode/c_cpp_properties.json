@@ -20,8 +20,8 @@
         {
             "name": "OWL",
             "includePath": [
+                "${workspaceFolder}/DJFX/**",
                 "${workspaceFolder}/PatchSource/**",
-                "${workspaceFolder}/PatchSource/include/**",
                 "${workspaceFolder}/**",
                 "${workspaceFolder}/LibSource/**",
                 "${workspaceFolder}/Libraries/**"

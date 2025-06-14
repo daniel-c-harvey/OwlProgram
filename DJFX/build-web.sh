@@ -12,11 +12,10 @@ cd "$SCRIPT_DIR"
 echo "Creating ../PatchSource/ directory..."
 mkdir -p ../PatchSource/
 
-# Copy all files and subdirectories to ../PatchSource/ with overwrite
-echo "Copying all files from $DIR_NAME to ../PatchSource/ directory..."
+# Copy all files and subdirectories to ../PatchSource/ only if newer or missing
+echo "Copying updated files from $DIR_NAME to ../PatchSource/ directory..."
 cp -rf * ../PatchSource/ 2>/dev/null || true
 
 # Run make command
-echo "Running make clean web PATCHNAME=$DIR_NAME ..."
 cd ..
-make clean web PATCHNAME="$DIR_NAME"
+make web PATCHNAME="$DIR_NAME" PLATFORM=OWL1

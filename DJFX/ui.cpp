@@ -1,6 +1,5 @@
 #include "ui.hpp"
 #include "basicmaths.h"
-#include <cmath>
 
 /** CONSTANTS */
 
